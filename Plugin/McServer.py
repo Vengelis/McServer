@@ -34,6 +34,8 @@ class McServerPlugin(DeadlinePlugin):
     def __init__(self):
         self.InitializeProcessCallback += self.InitializeProcess
         self.RenderTasksCallback += self.RenderTasks
+        self.RenderExecutableCallback += self.RenderExecutable
+        self.RenderArgumentCallback += self.RenderArgument
         self.ShProcess = None
 
     def Cleanup(self):
@@ -42,6 +44,8 @@ class McServerPlugin(DeadlinePlugin):
 
         del self.InitializeProcessCallback
         del self.RenderTasksCallback
+        del self.RenderExecutableCallback
+        del self.RenderArgumentCallback
 
         if self.ShProcess:
             self.ShProcess.Cleanup()
@@ -54,8 +58,10 @@ class McServerPlugin(DeadlinePlugin):
 
         self.PluginType = PluginType.Advanced
         self.StdoutHandling = True
+        self.PopupHandling = True
 
-        self.AddStdoutHandlerCallback(".*Progress: (\d+)%.*").HandleCallback += self.HandleProgress
+        # self.AddStdoutHandlerCallback(".*Progress: (\d+)%.*").HandleCallback += self.HandleProgress
+        self.AddStdoutHandlerCallback("You need to agree to the EULA.*").HandleCallback += self.HandleEnableEula
 
     def RenderTasks(self):
         cmdFilePath = self.GetDataFilename()
@@ -125,6 +131,9 @@ class McServerPlugin(DeadlinePlugin):
         progress = float(self.GetRegexMatch(1))
         self.SetProgress(progress)
 
+    def HandleEnableEula(self):
+        self.FailRender("Eula was disabled. Please turn On eula for start this instance.")
+
     #################################################################################
     ## This is the shell managed process for running SHELL commands.
     #################################################################################
@@ -167,6 +176,8 @@ class ShellManagedProcess(ManagedProcess):
         self.TerminateOnExit = True
 
         self.ShellString = self.deadlinePlugin.GetPluginInfoEntryWithDefault("Shell", "default")
+
+        self.AddStdoutHandlerCallback("You need to agree to the EULA.*").HandleCallback += self.HandleEnableEula
 
     def RenderExecutable(self):
         shellExecutable = ""
